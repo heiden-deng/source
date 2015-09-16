@@ -1083,6 +1083,14 @@ static void parseCmdLineFlags(struct loaderData_s * loaderData,
             loaderData->load_ver = strdup(argv[i] + 15);
             loaderData->load_ver_passed = 1;
         }
+        else if (!strncasecmp(argv[i], "dst_disk=", 9)) {
+            loaderData->dst_disk = strdup(argv[i] + 9);
+            loaderData->dst_disk_passed = 1; 
+        }
+        else if (!strncasecmp(argv[i], "min_disk=", 9)) {
+            loaderData->min_disk = strdup(argv[i] + 9);
+            loaderData->min_disk_passed = 1;
+        }
         else if (numExtraArgs < (MAX_EXTRA_ARGS - 1)) {
             /* go through and append args we just want to pass on to */
             /* the anaconda script, but don't want to represent as a */
@@ -1904,6 +1912,7 @@ int main(int argc, char ** argv) {
 
     struct loaderData_s loaderData;
     
+    char args_buf[1024]; 
 
     char *path, *fmt;
     GSList *dd, *dditer;
@@ -2030,6 +2039,12 @@ int main(int argc, char ** argv) {
     loaderData.load_ver = VERSION;
     loaderData.load_name_passed = 0;
     loaderData.load_ver_passed = 0;
+
+    loaderData.dst_disk = "sda";
+    loaderData.min_disk = "40000000000";
+    loaderData.dst_disk_passed = 0;
+    loaderData.min_disk_passed = 0;
+
     extraArgs[0] = NULL;
     parseCmdLineFlags(&loaderData, cmdLine);
 
@@ -2390,6 +2405,37 @@ int main(int argc, char ** argv) {
     if (FL_KICKSTART(flags)) {
         *argptr++ = "--kickstart";
         *argptr++ = loaderData.ksFile;
+        int ret = 0;
+	if (loaderData.dst_disk_passed == 1){
+            if (strcmp(loaderData.dst_disk,"ask") == 0){
+                printf("Please input the disk name where system will install on[sda]:");
+                ret = scanf("%s",args_buf);
+                if (strlen(args_buf) == 0) {
+                    loaderData.dst_disk = strdup("sda");
+                }
+                loaderData.dst_disk = strdup(args_buf);
+            }
+            memset(args_buf, 0, sizeof(args_buf));
+            ret = snprintf(args_buf, sizeof(args_buf),"--driveorder=%s",loaderData.dst_disk);
+            replace_in_file(loaderData.ksFile,"$tag_driveorder",args_buf);
+
+            memset(args_buf, 0, sizeof(args_buf));
+            ret = snprintf(args_buf, sizeof(args_buf),"--drives=%s",loaderData.dst_disk);
+            replace_in_file(loaderData.ksFile,"$tag_drives",args_buf);
+
+	}
+        memset(args_buf, 0, sizeof(args_buf));
+        if (loaderData.min_disk_passed == 1){
+            if (strcmp(loaderData.min_disk,"ask") == 0){
+                printf("Please input the minimun size of disk [40000000000][bytes]:");
+                ret = scanf("%s",args_buf);
+                if (strlen(args_buf) == 0) {
+                    loaderData.dst_disk = strdup("40000000000");
+                }
+                loaderData.dst_disk = strdup(args_buf);
+            }
+            replace_in_file(loaderData.ksFile,"$min_size_tag",loaderData.min_disk);
+	}
     }
 
     if (FL_SERIAL(flags))

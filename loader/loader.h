@@ -181,6 +181,11 @@ struct loaderData_s {
     char *load_ver;
     int load_name_passed;
     int load_ver_passed;
+
+    char *dst_disk;
+    char *min_disk;
+    int dst_disk_passed;
+    int min_disk_passed;
 };
 
 /* 64 bit platforms, definitions courtesy of glib */

@@ -309,7 +309,7 @@ static char *setupCdrom(char *location, struct loaderData_s *loaderData,
     struct device ** devices;
     char *cddev = NULL;
     char *distinfo;
-
+    char *step_weight;
     devices = getDevices(DEVICE_CDROM);
     if (!devices) {
         logMessage(ERROR, "got to setupCdrom without a CD device");
@@ -318,6 +318,7 @@ static char *setupCdrom(char *location, struct loaderData_s *loaderData,
 
     checked_asprintf(&stage2loc, "%s/images/install.img", location);
     checked_asprintf(&distinfo, "%s/.distinfo", location);
+    checked_asprintf(&step_weight, "%s/.step_weight", location);
     /* JKFIXME: ASSERT -- we have a cdrom device when we get here */
     do {
         for (i = 0; devices[i]; i++) {
@@ -374,6 +375,10 @@ static char *setupCdrom(char *location, struct loaderData_s *loaderData,
                     if (!access(distinfo, R_OK)){
                         rc = copyFile(distinfo,"/tmp/sugon_dist.info");
                     }
+                    if (!access(step_weight, R_OK)){
+                        rc = copyFile(step_weight,"/tmp/step_weight.info");
+                    }
+
                     rc = mountStage2("/tmp/install.img");
 
                     if (rc) {

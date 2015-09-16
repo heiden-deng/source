@@ -33,7 +33,8 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <glib.h>
-
+#include <stdio.h>
+#include <time.h>
 #include "log.h"
 #include "windows.h"
 #include "loadermisc.h"
@@ -107,4 +108,100 @@ int replaceChars(char *str, char old, char new) {
         pos++;
     }
     return count;
+}
+
+char *replace_str(int *dst_len, char *src, char *dst, char *old_str, char *new_str)
+{
+    char old_len = strlen(old_str);
+    char *src_ptr = src, *dst_ptr = dst;
+    //char new_str_buf[1024] = {0};
+    char *new_ptr = new_str;
+    char *ptr = NULL;
+    int new_len = 0;
+    //memset(new_str_buf,0,1024);
+    // strcpy(new_str_buf, new_str);
+    if (strlen(old_str) == 0){
+        return src;
+    }
+    if (strcmp(old_str, new_str) == 0){
+        return src;
+    }
+    while((ptr = strstr(src_ptr, old_str)) != NULL){
+      new_ptr = new_str;    
+      while (*src_ptr && src_ptr != ptr){
+        *dst_ptr  = *src_ptr;
+	dst_ptr++;
+	src_ptr++;
+	new_len++;
+      }
+    
+      while (*new_ptr){
+        *dst_ptr = *new_ptr;
+	dst_ptr++;
+	new_ptr++;
+	new_len++;
+      }
+      src_ptr += old_len;
+    }
+    while (*src_ptr){
+        *dst_ptr = *src_ptr;
+	dst_ptr++;
+	src_ptr++;
+        new_len++;
+    }
+    *dst_ptr = '\0';
+    logMessage(INFO, "replace %s with  %s,length=%d: %m", old_str, new_str, new_len);
+    *dst_len = new_len;
+    return dst;
+}
+//Author : heiden deng (dengjq@sugon.com)
+int convert_file(char *old_name, char *new_name,  char *old_str, char *new_str)
+{
+    int infd = -1;
+    int outfd;
+    char buf[4096];
+    char buf_new[4096];
+    int line_len = 0;
+    int i;
+    int rc = 0;
+    long long count = 0;
+    char *buf_new_ptr = NULL;
+
+    infd = open(old_name, O_RDONLY);
+
+    if (infd < 0) {
+        printf("failed to open %s", old_name);
+        return 1;
+    }
+    outfd = open(new_name, O_CREAT | O_RDWR, 0666);
+
+    if (outfd < 0) {
+        printf("failed to open %s", new_name);
+        return 1;
+    }
+    memset(buf, 0, sizeof(buf));
+    while ((i = read(infd, buf, sizeof(buf))) > 0) {
+	memset(buf_new, 0, 4096);
+        buf_new_ptr = replace_str(&line_len, buf, buf_new, old_str, new_str);
+	if (write(outfd, buf_new_ptr, line_len) != line_len) {
+            logMessage(ERROR, "write data to %s,length=%d,ori length=%d: %m", new_name,  line_len, i);
+	    rc = 1;
+            break;
+        }
+        count += line_len;
+    }
+    close(outfd);
+    close(infd);
+    //flush(outfd);
+    return rc;   
+}
+
+int replace_in_file(char *filename, char *old_str, char *new_str)
+{
+    char tmp_filename[1024] = {0};
+    srand((int)time(0));
+    snprintf(tmp_filename,sizeof(tmp_filename),"%s_%d", filename,  rand()%100);
+    copyFile(filename, tmp_filename);
+    //unlink(filename);
+    return convert_file(tmp_filename, filename, old_str, new_str);
 }

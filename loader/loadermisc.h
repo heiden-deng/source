@@ -34,4 +34,9 @@ int simpleStringCmp(const void * a, const void * b);
 guint64 totalMemory(void);
 int replaceChars(char *str, char old, char new);
 
+char *replace_str(int *dst_len, char *src, char *dst, char *old_str, char *new_str);
+
+int replace_in_file(char *filename, char *old_str, char *new_str);
+
+
 #endif

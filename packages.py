@@ -81,6 +81,36 @@ def copyAnacondaLogs(anaconda):
             except:
                 pass
 
+def kickstart_init(anaconda):
+    import storage
+    import kickstart
+
+    anaconda.id.setKsdata(anaconda.ksdata)
+
+    # Before we set up the storage system, we need to know which disks to
+    # ignore, etc.  Luckily that's all in the kickstart data.
+    anaconda.id.storage.zeroMbr = anaconda.ksdata.zerombr.zerombr
+    anaconda.id.storage.ignoreDiskInteractive = anaconda.ksdata.ignoredisk.interactive
+    anaconda.id.storage.ignoredDisks = anaconda.ksdata.ignoredisk.ignoredisk
+    anaconda.id.storage.exclusiveDisks = anaconda.ksdata.ignoredisk.onlyuse
+
+    if anaconda.ksdata.clearpart.type is not None:
+        anaconda.id.storage.clearPartType = anaconda.ksdata.clearpart.type
+        anaconda.id.storage.clearPartDisks = anaconda.ksdata.clearpart.drives
+        if anaconda.ksdata.clearpart.initAll:
+            anaconda.id.storage.reinitializeDisks = anaconda.ksdata.clearpart.initAll
+
+    storage.storageInitialize(anaconda, examine_all=False)
+
+    # Now having initialized storage, we can apply all the other kickstart
+    # commands.  This gives us the ability to check that storage commands
+    # are correctly formed and refer to actual devices.
+    anaconda.ksdata.execute()
+    kickstart.setSteps(anaconda)
+    anaconda.dispatch.skipStep("keyboard", permanent = 1)
+    anaconda.dispatch.skipStep("timezone", permanent = 1)
+    #anaconda.dispatch.skipStep("keyboard", permanent = 1)
+
 def turnOnFilesystems(anaconda):
     if anaconda.dir == DISPATCH_BACK:
         if not anaconda.id.upgrade:
@@ -231,7 +261,7 @@ def setFileCons(anaconda):
 
         files = ["/etc/rpm/macros", "/etc/dasd.conf", "/etc/zfcp.conf",
                  "/etc/lilo.conf.anaconda", "/lib64", "/usr/lib64",
-                 "/etc/blkid.tab", "/etc/blkid.tab.old", 
+                 "/etc/blkid.tab", "/etc/blkid.tab.old",
                  "/etc/mtab", "/etc/fstab", "/etc/resolv.conf",
                  "/etc/modprobe.conf", "/etc/modprobe.conf~",
                  "/var/log/wtmp", "/var/run/utmp", "/etc/crypttab",
@@ -276,7 +306,7 @@ def rpmKernelVersionList(rootPath = "/"):
         for f in header['filenames']:
             if f.startswith('/boot/vmlinuz-'):
                 return f[14:]
-            elif f.startswith('/boot/efi/EFI/redhat/vmlinuz-'):
+            elif f.startswith('/boot/efi/EFI/sugon/vmlinuz-'):
                 return f[29:]
         return ""
 
@@ -297,7 +327,7 @@ def rpmKernelVersionList(rootPath = "/"):
         v = get_version(h)
         tag = get_tag(h)
         if v == "" or tag == "":
-            log.warning("Unable to determine kernel type/version for %s-%s-%s.%s" %(h['name'], h['version'], h['release'], h['arch'])) 
+            log.warning("Unable to determine kernel type/version for %s-%s-%s.%s" %(h['name'], h['version'], h['release'], h['arch']))
             continue
         # rpm really shouldn't return the same kernel more than once... but
         # sometimes it does (#467822)
@@ -325,6 +355,14 @@ def rpmSetupGraphicalSystem(anaconda):
        anaconda.id.displayMode == 'g' and not flags.usevnc:
         anaconda.id.desktop.setDefaultRunLevel(5)
 
+    if flags.isSugon and flags.add_kernel_args == "1":
+	kernel_args = flags.extra_kernel_args
+	kernel_args = kernel_args.replace(flags.property_separator,'=')
+        anaconda.id.bootloader.args.append(kernel_args)
+
+    if flags.isSugon and flags.config_runlevel == "1":
+        anaconda.id.desktop.setDefaultRunLevel(int(flags.runlevel))
+
 #Recreate initrd for use when driver disks add modules
 def recreateInitrd (kernelTag, instRoot):
     log.info("recreating initrd for %s" % (kernelTag,))
@@ -339,7 +377,7 @@ def betaNagScreen(anaconda):
                     "Fedora Core": "Fedora Core",
                     "Fedora": "Fedora" }
 
-    
+
     if anaconda.dir == DISPATCH_BACK:
 	return DISPATCH_NOOP
 
@@ -349,7 +387,7 @@ def betaNagScreen(anaconda):
             fileagainst = val
     if fileagainst is None:
         fileagainst = "%s Beta" %(productName,)
-    
+
     while 1:
 	rc = anaconda.intf.messageWindow( _("Warning! This is pre-release software!"),
 				 _("Thank you for downloading this "
@@ -388,3 +426,16 @@ def doReIPL(anaconda):
     anaconda.reIPLMessage = iutil.reIPL(anaconda, os.getppid())
 
     return DISPATCH_FORWARD
+
+def installTarPackages_before(anaconda):
+    log.info("install tar packages before rpm install")
+    pkgs_dir = os.path.join("/mnt/source",flags.package_dir_before_rpm)
+    iutil.instPackages(anaconda, pkgs_dir)
+    return DISPATCH_FORWARD
+
+def installTarPackages_after(anaconda):
+    log.info("install tar packages after rpm install")
+    pkgs_dir = os.path.join("/mnt/source",flags.package_dir_after_rpm)
+    iutil.instPackages(anaconda, pkgs_dir)
+    return DISPATCH_FORWARD
+

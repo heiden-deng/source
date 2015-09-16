@@ -68,7 +68,7 @@ class fcoe(object):
 
     def _stabilize(self, intf = None):
         if intf:
-            if intf.anaconda.isSugon:
+            if hasattr(intf.anaconda, "isSugon") and intf.anaconda.isSugon:
                 if hasattr(intf.anaconda.id,"instProgress"):
                     intf.anaconda.id.instProgress.set_label(_("Connecting to FCoE SAN"))
                 w = None

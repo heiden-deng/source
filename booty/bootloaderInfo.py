@@ -81,7 +81,7 @@ def syncDataToDisk(dev, mntpt, instRoot = "/"):
                                ["-u", mntpt],
                                stdout = "/dev/tty5",
                                stderr = "/dev/tty5",
-                               root = instRoot)    
+                               root = instRoot)
 
 def rootIsDevice(dev):
     if dev.startswith("LABEL=") or dev.startswith("UUID="):
@@ -247,7 +247,7 @@ class BootImages:
         self.images = {}
 
     def getImages(self):
-        """returns dictionary of (label, longlabel, devtype) pairs 
+        """returns dictionary of (label, longlabel, devtype) pairs
         indexed by device"""
         # return a copy so users can modify it w/o affecting us
         return copy(self.images)
@@ -291,7 +291,10 @@ class BootImages:
                 # so that users can discern which major version of RHEL
                 # the given entry is (for example if there is RHEL5 or 7
                 # on the machine and in the boot menu)
-                self.images[self.default] = ("linux", productNameMajorVersion, type)
+                if flags.set_grub_product_title:
+                    self.images[self.default] = ("linux", flags.grub_product_title, type)
+                else:
+                    self.images[self.default] = ("linux", productNameMajorVersion, type)
 
     # Return a list of (storage.Device, string) tuples that are bootable
     # devices.  The string is the type of the device, which is just a string
@@ -412,7 +415,7 @@ class bootloaderInfo(object):
             os.rename(confFile, confFile + ".rpmsave")
 
         # Remove any invalid entries that are in the file; we probably
-        # just removed those kernels. 
+        # just removed those kernels.
         for label in lilo.listImages():
             (fsType, sl, path, other) = lilo.getImage(label)
             if fsType == "other": continue
@@ -458,10 +461,10 @@ class bootloaderInfo(object):
                     append = "%s root=%s" %(append,realroot)
                 else:
                     append = "root=%s" %(realroot,)
-            
+
             if len(append) > 0:
                 sl.addEntry('append', '"%s"' % (append,))
-                
+
             lilo.addImage (sl)
 
         for (label, longlabel, device) in chainList:
@@ -712,11 +715,11 @@ class efiBootloaderInfo(bootloaderInfo):
             argv = [ "efibootmgr", "-c" , "-w", "-L",
                      productNameMajorVersion, "-d", "%s" % (d.path,),
                      "-p", "%s" % (bootpart,),
-                     "-l", "\\EFI\\redhat\\" + self.bootloader ]
+                     "-l", "\\EFI\\sugon\\" + self.bootloader ]
             rc = iutil.execWithRedirect(argv[0], argv[1:], root = instRoot,
                                         stdout = "/dev/tty5",
                                         stderr = "/dev/tty5")
-            
+
         # return last rc, the API doesn't provide anything better than this
         return rc
 
@@ -778,7 +781,7 @@ class efiBootloaderInfo(bootloaderInfo):
         self._efiProductPath = None
 
         if iutil.isEfi():
-            self._configdir = "/boot/efi/EFI/redhat"
+            self._configdir = "/boot/efi/EFI/sugon"
             self._configname = "grub.conf"
             self._bootloader = "grub.efi"
             self.useGrubVal = 1

@@ -1320,7 +1320,7 @@ class PartitionDevice(StorageDevice):
 
         w = None
         if intf:
-            if intf.anaconda.isSugon:
+            if hasattr(intf.anaconda, "isSugon") and intf.anaconda.isSugon:
                 if hasattr(intf.anaconda.id,"instProgress"):
                     check_tips =  _("Creating device %s") % (self.path,)
                     intf.anaconda.id.instProgress.set_label(check_tips)
@@ -2088,7 +2088,7 @@ class LVMVolumeGroupDevice(DMDevice):
 
         w = None
         if intf:
-            if intf.anaconda.isSugon:
+            if hasattr(intf.anaconda, "isSugon") and intf.anaconda.isSugon:
                 if hasattr(intf.anaconda.id,"instProgress"):
                     check_tips =  _("Creating") +": "+ _("Creating device %s") % (self.path,)
                     intf.anaconda.id.instProgress.set_label(check_tips)
@@ -2565,7 +2565,7 @@ class LVMLogicalVolumeDevice(DMDevice):
 
         w = None
         if intf:
-            if intf.anaconda.isSugon:
+            if hasattr(intf.anaconda, "isSugon") and intf.anaconda.isSugon:
                 if hasattr(intf.anaconda.id,"instProgress"):
                     check_tips =  _("Creating") +": "+ _("Creating device %s") % (self.path,)
                     intf.anaconda.id.instProgress.set_label(check_tips)
@@ -3159,7 +3159,7 @@ class MDRaidArrayDevice(StorageDevice):
 
         w = None
         if intf:
-            if intf.anaconda.isSugon:
+            if hasattr(intf.anaconda, "isSugon") and intf.anaconda.isSugon:
                 if hasattr(intf.anaconda.id,"instProgress"):
                     check_tips =  _("Creating") +": "+ _("Creating device %s") % (self.path,)
                     intf.anaconda.id.instProgress.set_label(check_tips)
@@ -3652,7 +3652,7 @@ class FileDevice(StorageDevice):
 
         w = None
         if intf:
-            if intf.anaconda.isSugon:
+            if hasattr(intf.anaconda, "isSugon") and intf.anaconda.isSugon:
                 if hasattr(intf.anaconda.id,"instProgress"):
                     check_tips =  _("Creating file %s") % (self.path,)
                     intf.anaconda.id.instProgress.set_label(check_tips)

@@ -100,7 +100,7 @@ class LVMPhysicalVolume(DeviceFormat):
         intf = kwargs.get("intf")
         w = None
         if intf:
-            if intf.anaconda.isSugon:
+            if hasattr(intf.anaconda, "isSugon") and intf.anaconda.isSugon:
                 if hasattr(intf.anaconda.id,"instProgress"):
                     check_tips =  _("Formatting") +": "+ _("Creating %s on %s") % (self.device, self.name)
                     intf.anaconda.id.instProgress.set_label(check_tips)

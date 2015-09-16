@@ -162,7 +162,7 @@ class SwapSpace(DeviceFormat):
 
         w = None
         if intf:
-            if intf.anaconda.isSugon:
+            if hasattr(intf.anaconda, "isSugon") and intf.anaconda.isSugon:
                 if hasattr(intf.anaconda.id,"instProgress"):
                     check_tips =  _("Formatting") +": "+ _("Creating %s on %s") % (kwargs.get("device", self.device), self.type)
                     intf.anaconda.id.instProgress.set_label(check_tips)

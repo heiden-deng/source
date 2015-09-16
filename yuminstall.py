@@ -24,6 +24,7 @@ from ConfigParser import ConfigParser
 import sys
 import os
 import os.path
+import stat
 import shutil
 import time
 import warnings
@@ -133,7 +134,8 @@ class AnacondaCallback:
             # step 6 is the bulk of the ts processing time
             if amount == 6:
                 if self.anaconda.isSugon:
-                    self.progress.set_label(_("Preparing transaction from installation source"))
+                    if self.progress:
+                        self.progress.set_label(_("Preparing transaction from installation source"))
                 else:
                     self.progressWindow = \
                         self.progressWindowClass (_("Preparing to install"),
@@ -170,7 +172,8 @@ class AnacondaCallback:
                     % {'pkgStr': pkgStr, 'size': size_string(hdr['size'])}
             summary = to_unicode(gettext.ldgettext("redhat-dist", hdr['summary'] or ""))
             s += summary.strip()
-            self.progress.set_label(s)
+            if self.progress:
+	        self.progress.set_label(s)
 
             self.instLog.write(self.modeText % str(pkgStr))
 
@@ -241,7 +244,8 @@ class AnacondaCallback:
                     #                        % {'donepkgs': self.donepkgs,
                     #                           'numpkgs': self.numpkgs})
                 else:
-                    self.progress.set_text(P_("Packages completed: "
+                    if self.progress:
+                        self.progress.set_text(P_("Packages completed: "
                                               "%(donepkgs)d of %(numpkgs)d",
                                               "Packages completed: "
                                               "%(donepkgs)d of %(numpkgs)d",
@@ -1772,7 +1776,7 @@ debuglevel=6
         dirList = ['/var', '/var/lib', '/var/lib/rpm', '/tmp', '/dev', '/etc',
                    '/etc/sysconfig', '/etc/sysconfig/network-scripts',
                    '/etc/X11', '/root', '/var/tmp', '/etc/rpm', '/var/cache',
-                   '/var/cache/yum', '/etc/modprobe.d']
+                   '/var/cache/yum', '/etc/modprobe.d', '/usr','/usr/bin']
 
         # If there are any protected partitions we want to mount, create their
         # mount points now.
@@ -1837,10 +1841,24 @@ debuglevel=6
             if not anaconda.id.isHeadless:
                 anaconda.id.keyboard.write(anaconda.rootPath)
 
+        if os.access("/etc/sysconfig/xen-kernel", os.R_OK):
+            shutil.copyfile("/etc/sysconfig/xen-kernel",anaconda.rootPath + "/etc/sysconfig/xen-kernel")
+        if os.access("/usr/bin/grub-bootxen.sh", os.R_OK):
+            shutil.copyfile("/usr/bin/grub-bootxen.sh",anaconda.rootPath + "/usr/bin/grub-bootxen.sh")
+            os.chmod(anaconda.rootPath + "/usr/bin/grub-bootxen.sh", stat.S_IRWXU | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
         # make a /etc/mtab so mkinitrd can handle certain hw (usb) correctly
         f = open(anaconda.rootPath + "/etc/mtab", "w+")
         f.write(anaconda.id.storage.mtab)
         f.close()
+
+	if flags.driver_blacklist != "None":
+	    # make a /etc/sugon_vcell_blacklist so mkinitrd can add gpu driver to blacklist
+            f2 = open(anaconda.rootPath + "/etc/sugon_vcell_blacklist", "w+")
+            blklist = flags.driver_blacklist.split(flags.property_separator)
+            for drv in blklist:
+                f2.write("blacklist %s\n" % (drv,))
+            f2.close()
 
     def checkSupportedUpgrade(self, anaconda):
         if anaconda.dir == DISPATCH_BACK:

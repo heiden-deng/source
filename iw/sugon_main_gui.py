@@ -47,7 +47,6 @@ import logging
 log = logging.getLogger("anaconda")
 
 logos_extension = [".jpg", ".bmp", ".png", ".jpeg"]
-
 def getPixbuf_ex(file):
     if not os.access(file, os.R_OK):
         log.error("unable to load %s" %(file,))
@@ -99,6 +98,13 @@ class MainInstallWindow (InstallWindow):
         ics.setPrevEnabled (False)
         ics.setNextEnabled (False)
         self.pic_path = "/usr/share/anaconda/pixmaps/logos"
+        #screen_width = gtk.gdk.screen_width()
+        #screen_height = gtk.gdk.screen_height()
+        dirs = flags.logo_dir
+        size = dirs.split('_')
+        self.logo_width = int(size[0])
+        self.logo_height = int(size[1])
+        self.pic_path = os.path.join(self.pic_path, dirs)
         self.pic_index = -1
         self.pic_mode = 0 # 0: fix ,1:logos but static,2:logos and dynamic
         self.load_pic()
@@ -161,7 +167,7 @@ class MainInstallWindow (InstallWindow):
                 setpName = '<span foreground="blue"' + stepName + '</span>'
                 if index == 0:
                     stepInfo = _("Start install step: %s") % (stepName,)
-                    self.set_label("")
+                    self.set_label(" ")
                 elif index == end:
                     stepInfo = _("Finish install step: %s") % (stepName,)
                 else:
@@ -181,16 +187,16 @@ class MainInstallWindow (InstallWindow):
         # we have to use '&amp;' for the set_markup() method
         txt = txt.replace('&amp;', '&')
         txt = txt.replace('&', '&amp;')
-        if isStepLabel:
+        if isStepLabel and flags.display_step_info == "1":
             self.steplabel.set_markup(txt)
             self.steplabel.set_ellipsize(pango.ELLIPSIZE_END)
-        else:
+        elif not isStepLabel and flags.display_detail_info == "1":
             self.infolabel.set_markup(txt)
             self.infolabel.set_ellipsize(pango.ELLIPSIZE_END)
         self.processEvents()
 
     def set_text(self, txt):
-        if self._showPercentage:
+        if not self._showPercentage:
             log.debug("Setting progress text with showPercentage set")
             return
         self.progress.set_text(txt)
@@ -208,13 +214,25 @@ class MainInstallWindow (InstallWindow):
     def getScreen (self, anaconda):
         self.anaconda = anaconda
         self.intf = anaconda.intf
-        if not self.anaconda.isSugon:
-             self.setShowPercentage(False)
+        self.setShowPercentage(flags.display_progress_text == "1")
         if anaconda.dir == DISPATCH_BACK:
             self.intf.icw.prevClicked()
             return
+        screen_height = gtk.gdk.screen_height()
+        h3 = screen_height/14
+        h1 = 10 * h3
+        if h3 != 0:
+            n = (h1 - self.logo_height)/h3
+            if n < 0:
+                n = 0
+        else:
+            n = 0
 
-        table = gtk.Table(14, 1, False)
+        header_height = int(flags.header_height)
+        table = gtk.Table(14 + n + header_height, 1, False)
+
+        for i in range(header_height):
+            table.attach(gui.WrappingLabel("      "), 0, 1, i, i + 1, gtk.EXPAND | gtk.FILL, gtk.EXPAND | gtk.FILL)
 
         self.pic = gtk.Image()
         self.display_pic()
@@ -224,18 +242,26 @@ class MainInstallWindow (InstallWindow):
         box.add(self.pic)
         self.adbox = box
         frame.add(box)
-        table.attach(frame, 0, 1, 0, 10, gtk.EXPAND | gtk.FILL, gtk.EXPAND | gtk.FILL)
+        frame.set_size_request(self.logo_width, self.logo_height)
+        table.attach(frame, 0, 1, 0 + header_height, 10 + header_height, 0, 0)
 
-        self.steplabel = gui.WrappingLabel("")
+        for i in range(n):
+            table.attach(gui.WrappingLabel("      "), 0, 1, 10 + i + header_height, 11 + i + header_height, gtk.EXPAND | gtk.FILL, gtk.EXPAND | gtk.FILL)
+
+        self.steplabel = gui.WrappingLabel("  ")
         self.steplabel.set_alignment(0,0)
-        table.attach(self.steplabel, 0, 1, 10, 11,gtk.EXPAND | gtk.FILL, 0)
+        table.attach(self.steplabel, 0, 1, 10 + n + header_height, 11 + n + header_height, gtk.EXPAND | gtk.FILL, 0)
 
         self.progress = gtk.ProgressBar()
-        table.attach(self.progress, 0, 1, 11, 12, gtk.EXPAND | gtk.FILL, 0)
+        table.attach(self.progress, 0, 1, 11 + n + header_height, 12 + n + header_height, gtk.EXPAND | gtk.FILL, 0)
+        if flags.set_progress_bg == "1":
+            self.bg_color = gtk.gdk.color_parse(flags.progress_bg)
+            self.progress.modify_bg(gtk.STATE_NORMAL,self.bg_color)
+            self.progress.modify_bg(gtk.STATE_ACTIVE,self.bg_color)
 
-        self.infolabel = gui.WrappingLabel("")
+        self.infolabel = gui.WrappingLabel("  ")
         self.infolabel.set_alignment(0,0)
-        table.attach(self.infolabel, 0, 1, 12, 14, gtk.EXPAND | gtk.FILL, gtk.EXPAND | gtk.FILL)
+        table.attach(self.infolabel, 0, 1, 12 + n + header_height, 14 + n + header_height, gtk.EXPAND | gtk.FILL, gtk.EXPAND | gtk.FILL)
 
         # All done with creating components of UI
         self.intf.setPackageProgressWindow(self)

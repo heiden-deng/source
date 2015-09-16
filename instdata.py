@@ -320,5 +320,5 @@ class InstallData:
         self.extraModules = extraModules
 
         self.simpleFilter = not iutil.isS390()
-
+        self.instProgress = None
         self.reset()

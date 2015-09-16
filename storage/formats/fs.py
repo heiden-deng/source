@@ -351,7 +351,7 @@ class FS(DeviceFormat):
 
         w = None
         if intf:
-            if intf.anaconda.isSugon:
+            if hasattr(intf.anaconda, "isSugon") and intf.anaconda.isSugon:
                 if hasattr(intf.anaconda.id,"instProgress"):
                     format_tips =  _("Formatting") +": "+ _("Creating %s filesystem on %s") % (self.device, self.type)
                     intf.anaconda.id.instProgress.set_label(format_tips)
@@ -458,7 +458,7 @@ class FS(DeviceFormat):
 
         w = None
         if intf:
-            if intf.anaconda.isSugon:
+            if hasattr(intf.anaconda, "isSugon") and intf.anaconda.isSugon:
                 if hasattr(intf.anaconda.id,"instProgress"):
                     resize_tips =  _("Resizing") +": "+ _("Resizing filesystem on %s") % (self.device,)
                     intf.anaconda.id.instProgress.set_label(resize_tips)
@@ -514,7 +514,7 @@ class FS(DeviceFormat):
 
         w = None
         if intf:
-            if intf.anaconda.isSugon:
+            if hasattr(intf.anaconda, "isSugon") and intf.anaconda.isSugon:
                 if hasattr(intf.anaconda.id,"instProgress"):
                     check_tips =  _("Checking") +": "+ _("Checking filesystem on %s") % (self.device,)
                     intf.anaconda.id.instProgress.set_label(check_tips)

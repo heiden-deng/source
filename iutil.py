@@ -34,6 +34,7 @@ import re
 import threading
 import selinux
 
+import xml.dom.minidom as minidom
 import gettext
 _ = lambda x: gettext.ldgettext("anaconda", x)
 
@@ -43,6 +44,55 @@ program_log = logging.getLogger("program")
 
 # maximum ratio of swap size to disk size (10 %)
 MAX_SWAP_DISK_RATIO = 0.1
+
+
+def get_pic_filename (screen_width, screen_height):
+    if screen_width >= 3200:
+        dirs = "3200_1200"
+    elif screen_width >= 1920:
+        dirs = "1920_1080"
+    elif screen_width >= 1680:
+        dirs = "1680_1050"
+    elif screen_width >=1600:
+        if screen_height >= 1200:
+            dirs = "1600_1200"
+        else:
+            dirs = "1600_1024"
+    elif screen_width >= 1440:
+        dirs = "1440_900"
+    elif screen_width >= 1400:
+        dirs = "1400_1050"
+    elif screen_width >= 1366:
+        dirs = "1366_768"
+    elif screen_width >= 1280:
+        if screen_height >= 1024:
+            dirs = "1280_1024"
+        elif screen_height >= 960:
+            dirs = "1280_960"
+        elif screen_height >= 854:
+            dirs = "1280_854"
+        elif screen_height >= 800:
+            dirs = "1280_800"
+        else:
+            dirs = "1280_768"
+    elif screen_width >= 1152:
+        if screen_height >= 864:
+            dirs = "1152_864"
+        else:
+            dirs = "1152_768"
+    elif screen_width >= 1024:
+        if screen_height >= 768:
+            dirs = "1024_768"
+        else:
+            dirs = "1024_600"
+    elif screen_width >= 800:
+        dirs = "800_600"
+    else:
+        dirs = "640_480"
+    return dirs + ".png"
+
+
+
 
 #Python reimplementation of the shell tee process, so we can
 #feed the pipe output into two places at the same time
@@ -127,7 +177,7 @@ def execWithRedirect(command, argv, stdin = None, stdout = None,
     #prepare os pipes for feeding tee proceses
     pstdout, pstdin = os.pipe()
     perrout, perrin = os.pipe()
-   
+
     env = os.environ.copy()
     env.update({"LC_ALL": "C"})
 
@@ -1053,3 +1103,55 @@ def copytree(src, dst, symlinks=False, preserveOwner=False,
         errors.extend((src, dst, e.strerror))
     if errors:
         raise Error, errors
+
+def instPackages(anaconda, dir, inst_root="/mnt/sysimage"):
+    if not os.path.exists(dir):
+        log.warning("directory '%s' is not exist,skip instPakcage" % (dir,))
+        return
+    pkgs_xml = os.path.join(dir,"packages.xml")
+    if not os.access(pkgs_xml,os.R_OK):
+        log.warning("package config file '%s' access failed" % (pkgs_xml,))
+        return
+
+    dom = minidom.parse(pkgs_xml)
+    xml_root = dom.getElementsByTagName("packages")
+    packages =  xml_root[0].getElementsByTagName("package")
+
+    packages_total = len(packages)
+    log.info("find [%d] package" % (packages_total,))
+
+    pkg_size_lst = []
+    for package in packages:
+        pkg_size = package.getAttribute("size")
+        pkg_size_lst.append(int(pkg_size))
+    pkg_total_size = sum(pkg_size_lst)
+
+    package_index = 0
+    for package in packages:
+        pkg_id = package.getAttribute("id")
+        pkg_type = package.getAttribute("type")
+        pkg_sign = package.getAttribute("sign")
+        pkg_root = package.getAttribute("root")
+        pkg_name = package.firstChild.data
+        tar_args = "-zxf"
+        if pkg_type == "bz2" and pkg_name.endswith(".bz2"):
+            tar_args = "-jxf"
+        elif pkg_type == "gz" and pkg_name.endswith(".gz"):
+           tar_args = "-zxf"
+        else:
+            log.error("type [%s] not SUPPORT" % (pkg_type,))
+            continue
+        pkg_inst_root = os.path.join(inst_root, pkg_root.lstrip('/'))
+
+        pkg_full_name = os.path.join(dir,pkg_name)
+        rc = execWithRedirect("/usr/bin/tar",[tar_args, pkg_full_name, "-C", pkg_inst_root],stdout = "/dev/tty5", stderr="/dev/tty5")
+        log.info("install package[%s] type[%s],sign=[%s] finished,status[%d]" % (pkg_full_name, pkg_type, pkg_sign, rc))
+
+        package_index = package_index + 1
+        package_installed_size = sum(pkg_size_lst[:package_index])
+        if anaconda.isSugon and hasattr(anaconda.id, "instProgress") and anaconda.id.instProgress:
+            (step, _) = anaconda.dispatch.currentStepNum()
+            anaconda.id.instProgress.set_fraction_for_step(step, package_installed_size, pkg_total_size )
+            anaconda.id.instProgress.set_label("<b>Uncompress %s ,sign=%s</b>" % (pkg_name,pkg_sign))
+
+

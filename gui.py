@@ -1517,6 +1517,7 @@ class InstallControlWindow:
         self.anaconda = anaconda
         self.handle = None
         self.active_handle = True
+        self.pic_path = "/usr/share/anaconda/pixmaps"
 
     def keyRelease (self, window, event):
         if ((event.keyval == gtk.keysyms.KP_Delete
@@ -1544,6 +1545,39 @@ class InstallControlWindow:
         if win.getrc() == 0:
             return True
         self._doExit()
+
+    def change_background(self, widget, pic_filename, width, height):
+        widget.set_app_paintable(True)
+        widget.realize()
+        widget.queue_draw()
+        src_pixbuf = gtk.gdk.pixbuf_new_from_file(pic_filename)
+        dst_pixbuf = src_pixbuf.scale_simple(width, height, gtk.gdk.INTERP_BILINEAR)
+        (pixmap, _mask) = dst_pixbuf.render_pixmap_and_mask(128)
+        widget_win = widget.get_window()
+        widget_win.set_back_pixmap(pixmap,False)
+        widget_win.shape_combine_mask(_mask ,0 ,0)
+        #widget.set_window(widget_win)
+
+    def get_background(self):
+        self.width = gtk.gdk.screen_width()
+        self.height = gtk.gdk.screen_height()
+        pic_file = iutil.get_pic_filename(self.width, self.height)
+        background_pic = os.path.join(self.pic_path, "background")
+        background_pic = os.path.join(background_pic, pic_file)
+        if not os.access(background_pic,os.R_OK):
+            background_pic = os.path.join(self.pic_path, "background")
+            background_pic = os.path.join(background_pic, "sugon_background.png")
+        return background_pic
+
+    def create_sugon_main(self):
+        self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+        self.window.connect("delete_event", self.delete_event)
+        self.window.connect("destroy", self.destroy)
+        self.window.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_DESKTOP)
+        self.window.set_border_width(5)
+
+        background_pic = self.get_background()
+        self.change_background(self.window, background_pic, self.width, self.height)
 
     def createWidgets (self):
         self.window.set_title(_("%s Installer") %(productName,))
@@ -1582,7 +1616,9 @@ class InstallControlWindow:
 
             if width and height:
                 self.window.set_size_request(min(width, 800), min(height, 600))
-
+            if self.anaconda.isSugon and flags.set_background == "1":
+                background_pic = self.get_background()
+                self.change_background(self.window, background_pic, self.width, self.height)
             self.window.maximize()
 
         self.window.show()

@@ -21,6 +21,7 @@
 #
 
 import string
+import os
 from types import *
 from constants import *
 from packages import writeKSConfiguration, turnOnFilesystems
@@ -30,8 +31,13 @@ from packages import firstbootConfiguration
 from packages import betaNagScreen
 from packages import setupTimezone
 from packages import setFileCons
+from packages import kickstart_init
+from packages import installTarPackages_before
+from packages import installTarPackages_after
+
 from storage import storageInitialize
 from storage import storageComplete
+
 from storage.partitioning import doAutoPartition
 from bootloader import writeBootloader, bootloaderSetupChoices
 from flags import flags
@@ -65,13 +71,14 @@ log = logging.getLogger("anaconda")
 # All install steps take the anaconda object as their sole argument.  This
 # gets passed in when we call the function.
 installSteps = [
+    ("kickstartInit", 5, kickstart_init, ),
     ("welcome", 0, ),
     ("language", 0, ),
     ("keyboard", 0, ),
     ("betanag", 0, betaNagScreen, ),
     ("filtertype", 1, ),
     ("filter", 0, ),
-    ("storageinit", 5, storageInitialize, ),
+    ("storageinit", 1, storageInitialize, ),
     ("findrootparts", 0, findRootParts, ),
     ("findinstall", 0, ),
     ("network", 0, ),
@@ -80,7 +87,7 @@ installSteps = [
     ("setuptime", 1, setupTimezone, ),
     ("parttype", 0, ),
     ("cleardiskssel", 0, ),
-    ("autopartitionexecute", 5, doAutoPartition, ),
+    ("autopartitionexecute", 2, doAutoPartition, ),
     ("partition", 0, ),
     ("upgrademount", 0, upgradeMountFilesystems, ),
     ("upgradecontinue", 0, queryUpgradeContinue, ),
@@ -89,28 +96,30 @@ installSteps = [
     ("upgrademigfind", 0, upgradeMigrateFind, ),
     ("upgrademigratefs", 0, ),
     ("storagedone", 1, storageComplete, ),
-    ("enablefilesystems", 5, turnOnFilesystems, ),
+    ("enablefilesystems", 3, turnOnFilesystems, ),
     ("upgbootloader", 0, ),
     ("bootloadersetup", 1, bootloaderSetupChoices, ),
     ("bootloader",0, ),
     ("reposetup", 3, doBackendSetup, ),
+    ("installTarBefore", 0, installTarPackages_before, ),
     ("tasksel", 0,),
     ("basepkgsel", 1, doBasePackageSelect, ),
     ("group-selection",0, ),
     ("postselection", 1, doPostSelection, ),
     ("install",0, ),
     ("preinstallconfig", 1, doPreInstall, ),
-    ("installpackages",50, doInstall, ),
-    ("postinstallconfig", 3, doPostInstall, ),
-    ("writeconfig", 3, writeConfiguration, ),
+    ("installpackages", 65, doInstall, ),
+    ("postinstallconfig", 1, doPostInstall, ),
+    ("installTarAfter", 0, installTarPackages_after, ),
+    ("writeconfig", 1, writeConfiguration, ),
     ("firstboot", 1,firstbootConfiguration, ),
-    ("instbootloader",5, writeBootloader, ),
+    ("instbootloader",2, writeBootloader, ),
     ("reipl", 0, doReIPL, ),
     ("writeksconfig", 1, writeKSConfiguration, ),
     ("setfilecon", 1, setFileCons, ),
     ("copylogs", 1, copyAnacondaLogs, ),
     ("methodcomplete", 1, doMethodComplete, ),
-    ("postscripts", 7, runPostScripts, ),
+    ("postscripts", 3, runPostScripts, ),
     ("dopostaction", 2,doPostAction, ),
     ("complete",0, ),
     ]
@@ -208,6 +217,9 @@ class Dispatcher(object):
     def insertSteps(self, index, item):
         installSteps.insert(index, item)
 
+    def removeSteps(self, index):
+        del installSteps[index]
+
     def skipStep(self, stepToSkip, skip = 1, permanent = 0):
         if skip == 1:
             skip_method = "add"
@@ -254,7 +266,7 @@ class Dispatcher(object):
         while self.step >= self.firstStep and self.step < len(installSteps) \
             and (self.stepInSkipList(self.step) or self.stepIsDirect(self.step)):
 
-            if self.anaconda.isSugon and self.anaconda.id.instProgress:
+            if self.anaconda.isSugon and hasattr(self.anaconda.id, "instProgress") and self.anaconda.id.instProgress:
                 self.anaconda.id.instProgress.set_fraction_for_step(self.step, 0, 1)
 
             if self.stepIsDirect(self.step) and not self.stepInSkipList(self.step):
@@ -267,7 +279,7 @@ class Dispatcher(object):
                 log.info("leaving (%d) step %s" %(self._getDir(), stepName))
 		# if anything else, leave self.dir alone
 
-            if self.anaconda.isSugon and self.anaconda.id.instProgress:
+            if self.anaconda.isSugon and hasattr(self.anaconda.id, "instProgress") and self.anaconda.id.instProgress:
                 if self._getDir() == DISPATCH_FORWARD:
                     self.anaconda.id.instProgress.set_fraction_for_step(self.step, 1, 1)
 
@@ -305,13 +317,52 @@ class Dispatcher(object):
 
 	return (step, self.anaconda)
 
+    def createStepWeightDict(self):
+        self.step_file = "/tmp/step_weight.info"
+        self.step_dict = {}
+        if os.access(self.step_file, os.R_OK):
+            f = open(self.step_file, 'r')
+            contents = [line.strip('\n') for line in f.readlines()]
+            for item in contents:
+                try:
+                    (key, value) = item.split('=', 1)
+                except:
+                    key = item
+                    value = 0
+                if key:
+                    key = key.strip()
+                if value:
+                    value = value.strip()
+                self.step_dict[key] = int(value)
+            f.close()
+        return self.step_dict
+
+    def setupStepWeight(self):
+        global installSteps
+        installSteps_Final = []
+        stepWeight_dict = self.createStepWeightDict()
+        if len(stepWeight_dict) == 0:
+            return
+        for item in installSteps:
+            if not stepWeight_dict.has_key(item[0]):
+                installSteps_Final.append(item)
+	    else:
+                step_item = None
+                if len(item) == 2:
+                    step_item = (item[0], stepWeight_dict[item[0]])
+                else:
+                    step_item = (item[0], stepWeight_dict[item[0]], item[2])
+                installSteps_Final.append(step_item)
+        installSteps = []
+        installSteps.extend(installSteps_Final)
+
     def __init__(self, anaconda):
         self.anaconda = anaconda
-	self.anaconda.dir = DISPATCH_FORWARD
-	self.step = None
-	self.skipSteps = {}
-
-	self.firstStep = 0
+        self.anaconda.dir = DISPATCH_FORWARD
+        self.step = None
+        self.skipSteps = {}
+        self.firstStep = 0
+        self.setupStepWeight()
 
     def _getDir(self):
         return self.anaconda.dir

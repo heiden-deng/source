@@ -191,7 +191,7 @@ class iscsi(object):
     def stabilize(self, intf = None):
         # Wait for udev to create the devices for the just added disks
         if intf:
-            if intf.anaconda.isSugon:
+            if hasattr(intf.anaconda, "isSugon") and intf.anaconda.isSugon:
                 if hasattr(intf.anaconda.id,"instProgress"):
                     intf.anaconda.id.instProgress.set_label(_("Scanning iSCSI nodes"))
                 w = None
@@ -248,7 +248,7 @@ class iscsi(object):
             return
 
         if intf:
-            if intf.anaconda.isSugon:
+            if hasattr(intf.anaconda, "isSugon") and intf.anaconda.isSugon:
                 if hasattr(intf.anaconda.id,"instProgress"):
                     intf.anaconda.id.instProgress.set_label(_("Initializing iSCSI initiator"))
                 w = None
@@ -350,7 +350,7 @@ class iscsi(object):
         msg = ""
 
         if intf:
-            if intf.anaconda.isSugon:
+            if hasattr(intf.anaconda, "isSugon") and intf.anaconda.isSugon:
                 if hasattr(intf.anaconda.id,"instProgress"):
                     intf.anaconda.id.instProgress.set_label(_("Logging in to iSCSI node %s") % node.name)
                 w = None

@@ -196,7 +196,7 @@ class LUKS(DeviceFormat):
         intf = kwargs.get("intf")
         w = None
         if intf:
-            if intf.anaconda.isSugon:
+            if hasattr(intf.anaconda, "isSugon") and intf.anaconda.isSugon:
                 if hasattr(intf.anaconda.id,"instProgress"):
                     check_tips =  _("Encrypting %s") % kwargs.get("device",self.device)
                     intf.anaconda.id.instProgress.set_label(check_tips)

@@ -420,7 +420,7 @@ class Storage(object):
             if device.format.type == "luks" and device.format.exists:
                 self.__luksDevs[device.format.uuid] = device.format._LUKS__passphrase
 
-        if self.anaconda.isSugon:
+        if hasattr(self.anaconda, "isSugon") and self.anaconda.isSugon:
             if hasattr(self.anaconda.id,"instProgress"):
                 self.anaconda.id.instProgress.set_label(_("Examining storage devices"))
             prog = None

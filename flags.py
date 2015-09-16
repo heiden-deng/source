@@ -25,16 +25,16 @@ from constants import *
 class Flags:
 
     def __getattr__(self, attr):
-	if self.__dict__['flags'].has_key(attr):
-	    return self.__dict__['flags'][attr]
+        if self.__dict__['flags'].has_key(attr):
+            return self.__dict__['flags'][attr]
 
-	raise AttributeError, attr
+        raise AttributeError, attr
 
     def __setattr__(self, attr, val):
-	if self.__dict__['flags'].has_key(attr):
-	    self.__dict__['flags'][attr] = val
-	else:
-	    raise AttributeError, attr
+        if self.__dict__['flags'].has_key(attr):
+            self.__dict__['flags'][attr] = val
+        else:
+            raise AttributeError, attr
 
     def get(self, attr, val=None):
         if self.__dict__['flags'].has_key(attr):
@@ -95,22 +95,22 @@ class Flags:
             self.__dict__['flags'][flag] = 1
 
     def __init__(self):
-	self.__dict__['flags'] = {}
-	self.__dict__['flags']['test'] = 0
-	self.__dict__['flags']['livecdInstall'] = 0
+        self.__dict__['flags'] = {}
+        self.__dict__['flags']['test'] = 0
+        self.__dict__['flags']['livecdInstall'] = 0
         self.__dict__['flags']['dlabel'] = 0
-	self.__dict__['flags']['ibft'] = 1
-	self.__dict__['flags']['iscsi'] = 0
-	self.__dict__['flags']['serial'] = 0
-	self.__dict__['flags']['autostep'] = 0
-	self.__dict__['flags']['autoscreenshot'] = 0
-	self.__dict__['flags']['usevnc'] = 0
-	self.__dict__['flags']['vncquestion'] = True
+        self.__dict__['flags']['ibft'] = 1
+        self.__dict__['flags']['iscsi'] = 0
+        self.__dict__['flags']['serial'] = 0
+        self.__dict__['flags']['autostep'] = 0
+        self.__dict__['flags']['autoscreenshot'] = 0
+        self.__dict__['flags']['usevnc'] = 0
+        self.__dict__['flags']['vncquestion'] = True
         self.__dict__['flags']['mpath'] = 1
-	self.__dict__['flags']['dmraid'] = 1
-	self.__dict__['flags']['selinux'] = SELINUX_DEFAULT
+        self.__dict__['flags']['dmraid'] = 1
+        self.__dict__['flags']['selinux'] = SELINUX_DEFAULT
         self.__dict__['flags']['debug'] = 0
-	self.__dict__['flags']['targetarch'] = None
+        self.__dict__['flags']['targetarch'] = None
         self.__dict__['flags']['cmdline'] = self.createCmdlineDict()
         self.__dict__['flags']['useIPv4'] = True
         self.__dict__['flags']['useIPv6'] = True
@@ -126,7 +126,40 @@ class Flags:
         self.__dict__['flags']['installClass_id'] = "Sugon"
         self.__dict__['flags']['installClass_name'] = "vCell"
         self.__dict__['flags']['installClass_desc'] = "The default installation of %s is a minimum install. You can optionally select a different set of software now."
-        # for non-physical consoles like some ppc and sgi altix,
+
+        self.__dict__['flags']['header_height'] = "3"
+        self.__dict__['flags']['logo_dir'] = "640_480"
+        self.__dict__['flags']['progress_bg'] = "#C3FBFE"
+        self.__dict__['flags']['set_progress_bg'] = "0"
+
+        self.__dict__['flags']['config_runlevel'] = "1"
+        self.__dict__['flags']['runlevel'] = "3"
+
+
+        self.__dict__['flags']['add_kernel_args'] = "0"
+        self.__dict__['flags']['property_separator'] = "@"
+        self.__dict__['flags']['extra_kernel_args'] = "vga@792"
+
+        self.__dict__['flags']['package_dir_before_rpm'] = "PackagesInit"
+        self.__dict__['flags']['package_dir_after_rpm'] = "PackagesUpdate"
+
+
+        self.__dict__['flags']['driver_blacklist'] = "None"
+        self.__dict__['flags']['set_background'] = "0"
+
+        self.__dict__['flags']['display_progress_text'] = "0"
+        self.__dict__['flags']['display_step_info'] = "0"
+        self.__dict__['flags']['display_detail_info'] = "0"
+
+        self.__dict__['flags']['set_grub_product_title'] = "0"
+        self.__dict__['flags']['grub_product_title'] = "Sugon vCell 1.8"
+
+        self.__dict__['flags']['add_xen_entry'] = 0
+        self.__dict__['flags']['grub_xen_args'] = "loglvl=all vga=mode-0x317 guest_loglvl=all xencons=off"
+        self.__dict__['flags']['dom0_mem_fraction'] = "0.4"
+        self.__dict__['flags']['dom0_mem_max'] = "20480"  #20G
+
+	# for non-physical consoles like some ppc and sgi altix,
         # we need to preserve the console device and not try to
         # do things like bogl on them.  this preserves what that
         # device is
@@ -157,6 +190,9 @@ class Flags:
             self.__dict__['flags']['isSugon'] = True
         if self.__dict__['flags']['cmdline'].has_key("logo_interval"):
             self.__dict__['flags']['logo_interval'] = int(self.__dict__['flags']['cmdline']['logo_interval'])
+        if self.__dict__['flags']['cmdline'].has_key("add_xen_entry"):
+            self.__dict__['flags']['add_xen_entry'] = int(self.__dict__['flags']['cmdline']['add_xen_entry'])
+
 
         for dist_key in self.__dict__['flags']['distr_info']:
             self.__dict__['flags'][dist_key] = self.__dict__['flags']['distr_info'][dist_key]

@@ -1445,7 +1445,7 @@ class DeviceTree(object):
                 # some devices don't have a /dev/disk/by-path/ #!@#@!@#
                 bypath = device.name
                 details = ""
-            if self.intf.anaconda.isSugon:
+            if hasattr(self.intf, "anaconda") and  hasattr(self.intf.anaconda, "isSugon") and self.intf.anaconda.isSugon:
                 if hasattr(self.intf.anaconda.id,"instProgress"):
                     self.intf.anaconda.id.instProgress.set_label(_("Wipe disk data and format"))
                 initcb = None
@@ -1465,7 +1465,7 @@ class DeviceTree(object):
                                exists=True)
         except InvalidDiskLabelError:
             # if we have a cb function use it. else we ignore the device.
-            if self.intf.anaconda.isSugon:
+            if hasattr(self.intf.anaconda, "isSugon") and  self.intf.anaconda.isSugon:
                 self.intf.autosetInitializeDiskQuestion()
                 format = getFormat("disklabel",
                                    device=device.path,

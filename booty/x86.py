@@ -17,7 +17,7 @@ class x86BootloaderInfo(efiBootloaderInfo):
             self.password = val
             self.pure = val
             return
-        
+
         if isCrypted and self.useGrubVal == 0:
             self.pure = None
             return
@@ -35,7 +35,7 @@ class x86BootloaderInfo(efiBootloaderInfo):
 
             self.password = crypt.crypt(val, salt)
             self.pure = val
-        
+
     def getPassword (self):
         return self.pure
 
@@ -300,7 +300,7 @@ class x86BootloaderInfo(efiBootloaderInfo):
         if self.serial == 1:
             # grub the 0-based number of the serial console device
             unit = self.serialDevice[-1]
-            
+
             # and we want to set the speed too
             speedend = 0
             for char in self.serialOptions:
@@ -312,7 +312,7 @@ class x86BootloaderInfo(efiBootloaderInfo):
             else:
                 # reasonable default
                 speed = "9600"
-                
+
             f.write("serial --unit=%s --speed=%s\n" %(unit, speed))
             f.write("terminal --timeout=%s serial console\n" % (self.timeout or 5))
         else:
@@ -322,10 +322,11 @@ class x86BootloaderInfo(efiBootloaderInfo):
                         % (self.grubbyPartitionName(bootDevs[0]), cfPath))
                 f.write("hiddenmenu\n")
 
-            
+
+        f.write('verbose=0\n')
         if self.password:
             f.write('password --encrypted %s\n' %(self.password))
-        
+
         for (label, longlabel, version) in kernelList:
             kernelTag = "-" + version
             kernelFile = "%svmlinuz%s" % (cfPath, kernelTag)
@@ -337,7 +338,7 @@ class x86BootloaderInfo(efiBootloaderInfo):
 
             realroot = " root=%s" % rootDev.fstabSpec
 
-            if version.endswith("xen0") or (version.endswith("xen") and not os.path.exists("/proc/xen")):
+            if (flags.add_xen_entry == 1 and os.access("%s/boot/xen.gz" %(instRoot,), os.R_OK)) or (version.endswith("xen0") or (version.endswith("xen") and not os.path.exists("/proc/xen"))):
                 # hypervisor case
                 sermap = { "ttyS0": "com1", "ttyS1": "com2",
                            "ttyS2": "com3", "ttyS3": "com4" }
@@ -355,6 +356,19 @@ class x86BootloaderInfo(efiBootloaderInfo):
                     hvFile = "%sxen.gz-%s %s" %(cfPath,
                                                 version.replace("xen", ""),
                                                 hvs)
+                if flags.add_xen_entry == 1:
+                    total_mem_kb = iutil.memInstalled()
+                    total_mem_mb = total_mem_kb / 1024
+                    dom0_mem_fraction = float(flags.dom0_mem_fraction)
+                    if total_mem_mb < 2048:
+                        dom0_mem_fraction = 0.8
+                    dom0_mem = long(total_mem_mb * dom0_mem_fraction)
+                    if dom0_mem > long(flags.dom0_mem_max):
+                        dom0_mem = long(flags.dom0_mem_max)
+                    xen_args = flags.grub_xen_args
+                    if xen_args.find("dom0_mem=") == -1:
+                        xen_args = "dom0_mem=%dM,max:%dM %s" %(dom0_mem, dom0_mem, xen_args)
+                    hvFile = "%sxen.gz %s" %(cfPath, xen_args)
                 f.write('\tkernel %s\n' %(hvFile,))
                 f.write('\tmodule %s ro%s' %(kernelFile, realroot))
                 if self.args.get():
@@ -476,7 +490,7 @@ class x86BootloaderInfo(efiBootloaderInfo):
             return "(%s,%d)" % (self.grubbyDiskName(name), partNum)
         else:
             return "(%s)" %(self.grubbyDiskName(name))
-    
+
 
     def getBootloaderConfig(self, instRoot, bl, kernelList,
                             chainList, defaultDev):
@@ -529,7 +543,7 @@ class x86BootloaderInfo(efiBootloaderInfo):
         if len(kernelList) < 1:
             raise BootyNoKernelWarning
 
-        rc = self.writeGrub(instRoot, bl, kernelList, 
+        rc = self.writeGrub(instRoot, bl, kernelList,
                             chainList, defaultDev,
                             not self.useGrubVal)
         if rc:

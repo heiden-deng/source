@@ -1,0 +1,25 @@
+installClass_id=sugon
+installClass_name=vCell
+installClass_desc=The default installation of %s is a minimum install. You can optionally select a different set of software now.
+logo_interval=10000
+set_progress_bg=0
+progress_bg=#C3FBFE
+config_runlevel=1
+runlevel=3
+logo_dir=640_480
+add_kernel_args=0
+extra_kernel_args=vga@792
+property_separator=@
+header_height=2
+package_dir_before_rpm=PackagesInit
+package_dir_after_rpm=PackagesUpdate
+driver_blacklist=ast@mgag200
+set_background=1
+display_progress_text=0
+display_step_info=0
+display_detail_info=0
+set_grub_product_title=1
+grub_product_title=Sugon vCell 1.8
+grub_xen_args=loglvl=all vga=mode-0x317 guest_loglvl=all xencons=off
+dom0_mem_fraction=0.4
+dom0_mem_max=20480

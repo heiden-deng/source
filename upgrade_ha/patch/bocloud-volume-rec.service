@@ -1,0 +1,15 @@
+[Unit]
+Description=Restore Openstack Cinder Volume configuration
+Requires=sys-kernel-config.mount
+After=sys-kernel-config.mount network.target local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/ha_switch_init.sh
+ExecStop=/usr/bin/targetctl clear
+SyslogIdentifier=target
+
+[Install]
+WantedBy=multi-user.target
+

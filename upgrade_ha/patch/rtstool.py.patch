@@ -1,0 +1,63 @@
+--- /usr.old/lib/python2.7/site-packages/cinder/cmd/rtstool.py	2016-09-09 14:59:06.870220210 +0800
++++ /usr/lib/python2.7/site-packages/cinder/cmd/rtstool.py	2016-09-10 15:09:52.079457205 +0800
+@@ -16,6 +16,7 @@
+ 
+ import os
+ import sys
++import stat
+ 
+ # We always use rtslib-fb, but until version 2.1.52 it didn't have its own
+ # namespace, so we must be backwards compatible.
+@@ -191,6 +192,7 @@
+     print(sys.argv[0] + " delete [iqn]")
+     print(sys.argv[0] + " verify")
+     print(sys.argv[0] + " save [path_to_file]")
++    print(sys.argv[0] + " restore [path_from_file]")
+     sys.exit(1)
+ 
+ 
+@@ -222,6 +224,29 @@
+                              '%(exc)s'),
+                            {'file_path': destination_file, 'exc': exc})
+ 
++def restore_from_file(configration_file):
++    rtsroot = rtslib_fb.root.RTSRoot()
++    # If configuration file is None, use rtslib default save file.
++    if not configration_file or not os.path.exists(configration_file):
++        configration_file = rtslib_fb.root.default_save_file
++        path_to_file = os.path.dirname(configration_file )
++
++        # NOTE(geguileo): With default file we ensure path exists and
++        # create it if doesn't.
++        # Cinder's LIO target helper runs this as root, so it will have no
++        # problem creating directory /etc/target.
++        # If run manually from the command line without being root you will
++        # get an error, same as when creating and removing targets.
++        if not os.path.exists(path_to_file):
++            os.makedirs(path_to_file, 0o755)
++
++
++    try:
++        rtsroot.restore_from_file(configration_file)
++    except (OSError, IOError) as exc:
++        raise RtstoolError(_('Could not restore configuration file '
++                             '%(file_path)s: %(exc)s'),
++                           {'file_path': configration_file, 'exc': exc})
+ 
+ def parse_optional_create(argv):
+     optional_args = {}
+@@ -314,6 +339,14 @@
+         save_to_file(destination_file)
+         return 0
+ 
++    elif argv[1] == 'restore':
++        if len(argv) > 3:
++            usage()
++
++        configuration_file = argv[2] if len(argv) > 2 else None
++        restore_from_file(configuration_file)
++        return 0
++
+     else:
+         usage()
+ 

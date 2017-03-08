@@ -1,0 +1,142 @@
+1,设置主机名
+/etc/hosts
+格式
+192.168.1.10 hv10.localdomain hv10
+
+2,设置控制节点与其他节点无密码登录,关闭防火墙，
+systemctl disable firewalld.service
+systemctl stop firewalld.service
+
+3,拷贝/etc/hosts文件到其他主机,配置各节点yum repo
+[root@hv211 ~]# mkdir /etc/yum.repos.d/backup
+[root@hv211 ~]# mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/backup/
+[root@hv211 yum.repos.d]# for i in `ls`;do sed -i 's/192.168.1.166/192.168.1.10/g' $i;done
+[root@hv211 ~]# ssh-keygen -t rsa
+[root@hv211 ~]# ssh-copy-id -i ~/.ssh/id_rsa.pub root@hv212
+[root@hv211 ~]# ssh-copy-id -i ~/.ssh/id_rsa.pub root@hv213
+[root@hv211 ~]# for i in {hv211,hv212,hv213};do ssh root@$i systemctl disable firewalld.service;done
+[root@hv211 ~]# for i in {hv211,hv212,hv213};do ssh root@$i systemctl stop firewalld.service;done
+[root@hv211 ~]# for i in {hv212,hv213};do scp /etc/hosts root@$i:/etc/hosts;done
+[root@hv211 ~]# for i in {hv212,hv213};do ssh root@$i mkdir /etc/yum.repos.d/backup;done
+[root@hv211 ~]# for i in {hv212,hv213};do ssh root@$i "mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/backup";done
+[root@hv211 ~]# for i in {hv212,hv213};do scp /etc/yum.repos.d/*.repo root@$i:/etc/yum.repos.d/;done
+
+4,关闭selinux,
+临时关闭  setenforce 0
+永久关闭/etc/sysconfig/selinux
+for i in {hv211,hv212,hv213};do ssh root@$i sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux;done
+for i in {hv211,hv212,hv213};do ssh root@$i setenforce 0;done
+
+5,控制节点安装chrony
+配置/etc/chrony.conf
+allow 10.0.0.0/24
+最后面添加server 127.127.1.0
+
+systemctl enable chronyd
+systemctl start  chronyd
+其他节点清空/etc/chrony.conf，
+只保留server controller iburst
+
+启动服务
+systemctl enable chronyd.service
+systemctl start chronyd.service
+[root@hv211 ~]# for i in {hv212,hv213};do scp chrony.conf root@$i:/etc/chrony.conf;done
+[root@hv211 ~]# for i in {hv211,hv212,hv213};do ssh root@$i systemctl enable chronyd;done
+[root@hv211 ~]# for i in {hv211,hv212,hv213};do ssh root@$i systemctl start chronyd;done
+
+
+6,所有节点安装
+yum install -y python-openstackclient
+yum install -y openstack-selinux
+
+7,安装mysql
+yum install mariadb mariadb-server MySQL-python
+/etc/my.cnf.d/mariadb_openstack.cnf
+[mysqld]
+bind-address = 10.0.0.11
+default-storage-engine = innodb
+innodb_file_per_table
+collation-server = utf8_general_ci
+character-set-server = utf8
+
+systemctl enable mariadb.service
+systemctl start mariadb.service
+
+
+
+设置密码和远程访问
+mysql_secure_installation
+
+
+8,配置mongodb
+yum install mongodb-server mongodb
+/etc/mongod.conf 
+bind_ip = 10.0.0.11
+smallfiles = true
+
+systemctl enable mongod.service
+systemctl start mongod.service
+
+9,安装rabbitmq
+yum install rabbitmq-server
+systemctl enable rabbitmq-server.service
+systemctl start rabbitmq-server.service
+
+rabbitmqctl add_user openstack RABBIT_PASS
+rabbitmqctl set_permissions openstack ".*" ".*" ".*"
+
+10,安装memcache
+yum install memcached python-memcached
+
+systemctl enable memcached.service
+systemctl start memcached.service
+
+11,配置网卡,dvr模式需要进行此配置
+计算节点和网络节点均需要配置
+首先安装yum install openvswitch
+外网配置
+/etc/sysconfig/network-scripts/ifcfg-enp5s0f1
+DEVICE=enp5s0f1
+USERCTL=no
+ONBOOT=yes
+BOOTPROTO=static
+TYPE=OVSPort
+OVS_BRIDGE=br-ex
+NOZEROCONF=yes
+
+/etc/sysconfig/network-scripts/ifcfg-br-ex
+DEVICE=br-ex
+USERCTL=no
+ONBOOT=yes
+BOOTPROTO=static
+TYPE=OVSBridge
+IPADDR=10.6.118.137
+NETMASK=255.255.255.0
+GATEWAY=10.6.118.254
+STP=off
+
+Tunnel网络配置
+/etc/sysconfig/network-scripts/ifcfg-enp8s0f0
+DEVICE='enp8s0f1'
+USERCTL=no
+ONBOOT=yes
+BOOTPROTO=static
+TYPE=OVSPort
+IPADDR=0.0.0.0
+OVS_BRIDGE=br-tun
+NOZEROCONF=yes
+
+/etc/sysconfig/network-scripts/ifcfg-br-tun
+DEVICE=br-tun
+USERCTL=no
+ONBOOT=yes
+BOOTPROTO=static
+TYPE=OVSBridge
+IPADDR=100.100.100.137
+NETMASK=255.255.255.0
+GATEWAY=
+STP=off
+
+
+重启网络服务，或者重启系统
+

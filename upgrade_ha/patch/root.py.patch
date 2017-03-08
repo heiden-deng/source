@@ -1,0 +1,11 @@
+--- /usr.old/lib/python2.7/site-packages/rtslib_fb/root.py	2016-09-10 15:10:36.577586379 +0800
++++ /usr/lib/python2.7/site-packages/rtslib_fb/root.py	2016-09-10 15:11:19.659710557 +0800
+@@ -246,7 +246,7 @@
+             save_file = default_save_file
+ 
+         with open(save_file+".temp", "w+") as f:
+-            os.fchmod(f.fileno(), stat.S_IRUSR | stat.S_IWUSR)
++            os.fchmod(f.fileno(), stat.S_IRUSR | stat.S_IWUSR | stat.S_IROTH | stat.S_IRGRP)
+             f.write(json.dumps(self.dump(), sort_keys=True, indent=2))
+             f.write("\n")
+             os.fsync(f.fileno())

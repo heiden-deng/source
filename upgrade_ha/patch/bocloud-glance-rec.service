@@ -1,0 +1,14 @@
+[Unit]
+Description=Restore Openstack Glance Logic Volume
+Requires=sys-kernel-config.mount
+After=sys-kernel-config.mount network.target local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/glance_switch_init.sh
+SyslogIdentifier=target
+
+[Install]
+WantedBy=multi-user.target
+

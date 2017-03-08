@@ -1,0 +1,14 @@
+--- /usr.new/lib/python2.7/site-packages/nova/volume/cinder.py	2016-12-02 22:41:52.899083381 +0800
++++ /usr/lib/python2.7/site-packages/nova/volume/cinder.py	2016-12-02 22:40:13.903927454 +0800
+@@ -337,8 +337,10 @@ class API(object):
+ 
+     @translate_volume_exception
+     def initialize_connection(self, context, volume_id, connector):
+-        return cinderclient(context).volumes.initialize_connection(volume_id,
++        connection_info = cinderclient(context).volumes.initialize_connection(volume_id,
+                                                                    connector)
++        connection_info['connector'] = connector
++        return connection_info
+ 
+     @translate_volume_exception
+     def terminate_connection(self, context, volume_id, connector):

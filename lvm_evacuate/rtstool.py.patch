@@ -1,0 +1,13 @@
+--- /usr.new/lib/python2.7/site-packages/cinder/cmd/rtstool.py	2016-12-02 22:34:01.778348561 +0800
++++ /usr/lib/python2.7/site-packages/cinder/cmd/rtstool.py	2016-12-02 22:35:45.437507644 +0800
+@@ -145,8 +145,8 @@ def delete_initiator(target_iqn, initiat
+         if acl.node_wwn.lower() == initiator_iqn.lower():
+             acl.delete()
+             return
+-    raise RtstoolError(_('Could not find ACL %(acl)s in target %(target)s')
+-                       % {'target': target_iqn, 'acl': initiator_iqn})
++    print(_('delete_initiator: %s ACL not found. Continuing.') % initiator_iqn)
++    # Return successfully.
+ 
+ 
+ def get_targets():
